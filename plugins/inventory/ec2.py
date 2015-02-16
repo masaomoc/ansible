@@ -212,6 +212,11 @@ class Ec2Inventory(object):
         else:
             self.regions = configRegions.split(",")
 
+        # profile
+        self.profile = None
+        if config.has_option('ec2', 'profile'):
+            self.profile = config.get('ec2', 'profile')
+
         # Destination addresses
         self.destination_variable = config.get('ec2', 'destination_variable')
         self.vpc_destination_variable = config.get('ec2', 'vpc_destination_variable')
@@ -317,7 +322,10 @@ class Ec2Inventory(object):
                 conn = boto.connect_euca(host=self.eucalyptus_host)
                 conn.APIVersion = '2010-08-31'
             else:
-                conn = ec2.connect_to_region(region)
+                if self.profile:
+                    conn = ec2.connect_to_region(region, profile_name=self.profile)
+                else:
+                    conn = ec2.connect_to_region(region)
 
             # connect_to_region will fail "silently" by returning None if the region name is wrong or not supported
             if conn is None:
@@ -346,7 +354,10 @@ class Ec2Inventory(object):
         region '''
 
         try:
-            conn = rds.connect_to_region(region)
+            if self.profile:
+                conn = rds.connect_to_region(region, profile_name=self.profile)
+            else:
+                conn = rds.connect_to_region(region)
             if conn:
                 instances = conn.get_all_dbinstances()
                 for instance in instances:
@@ -363,7 +374,10 @@ class Ec2Inventory(object):
             conn = boto.connect_euca(self.eucalyptus_host)
             conn.APIVersion = '2010-08-31'
         else:
-            conn = ec2.connect_to_region(region)
+            if self.profile:
+                conn = ec2.connect_to_region(region, profile_name=self.profile)
+            else:
+                conn = ec2.connect_to_region(region)
 
         # connect_to_region will fail "silently" by returning None if the region name is wrong or not supported
         if conn is None:
@@ -548,7 +562,10 @@ class Ec2Inventory(object):
         ''' Get and store the map of resource records to domain names that
         point to them. '''
 
-        r53_conn = route53.Route53Connection()
+        if self.profile:
+            r53_conn = route53.Route53Connection(profile_name=self.profile)
+        else:
+            r53_conn = route53.Route53Connection()
         all_zones = r53_conn.get_zones()
 
         route53_zones = [ zone for zone in all_zones if zone.name[:-1]
